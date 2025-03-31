@@ -1,6 +1,5 @@
 [workspace]
-resolver = "2"
-members = ["with_generics"]
+members = ["impligen"]
 
 [workspace.package]
 version = "0.0.1"

@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 use proc_macro::TokenStream;
+use proc_macro_error::proc_macro_error;
 use quote::{format_ident, quote};
 use syn::token::Brace;
 use syn::{
@@ -25,6 +26,7 @@ impl Parse for ExtraGenerics {
     }
 }
 
+#[proc_macro_error] // TODO: add informative error messages
 #[proc_macro_attribute]
 pub fn with_generics(attrs: TokenStream, item: TokenStream) -> TokenStream {
     let extra: ExtraGenerics = parse_macro_input!(attrs as ExtraGenerics);
@@ -246,6 +248,7 @@ impl Parse for ImplItem {
     }
 }
 
+#[proc_macro_error] // TODO: add informative error messages
 #[proc_macro]
 pub fn impl_(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as MultiImplInput);

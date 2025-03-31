@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangelistOrganizerProjectSettings">
+    <option name="automaticallyOrganize" value="true" />
+    <option name="changelistOrganizerItems">
+      <list>
+        <ChangelistOrganizerItem>
+          <option name="changeListName" value="with_generics" />
+          <option name="checkFullPath" value="true" />
+          <option name="enabled" value="true" />
+          <option name="filePattern" value="*/with_generics*" />
+        </ChangelistOrganizerItem>
+        <ChangelistOrganizerItem>
+          <option name="changeListName" value="meta" />
+          <option name="enabled" value="true" />
+          <option name="filePattern" value="(*.toml|*/.gitignore)" />
+        </ChangelistOrganizerItem>
+      </list>
+    </option>
+  </component>
+</project>

@@ -1,0 +1,5 @@
+shared-version = true
+allow-branch = ["main"]
+pre-release-replacements = [
+    #    { file = "Cargo.toml", search = "dollop-macros = .*", replace = "{{crate_name}} = \"{{version}}\"" },
+]

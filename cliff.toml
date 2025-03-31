@@ -1,0 +1,51 @@
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+"""
+# template for the changelog body
+# https://tera.netlify.app/docs
+body = """
+{% if version %}
+## {{ version }} ({{ timestamp | date(format="%Y-%m-%d") }})
+{% else %}
+## [Unreleased]
+{% endif %}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | upper_first }}{% if commit.id %} ([{{ commit.id | truncate(length=7, end="") }}]({{ commit.id }})){% endif %}
+{% endfor %}
+{% endfor %}
+"""
+
+[git]
+conventional_commits = false
+filter_unconventional = false
+commit_parsers = [
+    # conventional commits
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactor" },
+    { message = "^style", group = "Styling" },
+    { message = "^test", group = "Testing" },
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore", group = "Miscellaneous Tasks" },
+    # Intelligent guessing
+    { message = "add|new|introduce|implement", group = "Features" },
+    { message = "fix|resolve|correct|patch", group = "Bug Fixes" },
+    { message = "doc|readme|comment", group = "Documentation" },
+    { message = "fast|speed|optimization|performance", group = "Performance" },
+    { message = "refactor|clean|rewrite|restructure", group = "Refactor" },
+    { message = "format|indent|spacing|style", group = "Styling" },
+    { message = "test|spec|check|assert", group = "Testing" },
+    # Some fallbacks
+    { message = "typo|reword|wording", group = "Documentation" },
+    # Catch-all for anything not matched above
+    { message = ".*", group = "Other Changes" }
+]

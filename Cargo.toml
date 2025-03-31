@@ -1,0 +1,63 @@
+[workspace]
+resolver = "2"
+members = ["with_generics"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2018"
+rust-version = "1.64.0"
+authors = ["orgrinrt", "Hiisi Digital"]
+
+[workspace.dependencies]
+
+[package]
+name = "dollop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description = """
+An experimental allocator implementing several strategies with common api patterns for more convenient reuse
+"""
+license-file = "LICENSE"
+readme = "README.md"
+keywords = []
+categories = []
+documentation = "https://docs.rs/dollop"
+homepage = "https://github.com/orgrinrt/dollop"
+repository = "https://github.com/orgrinrt/dollop"
+
+[dependencies]
+log = { version = "0.4", default-features = false }
+# Optional backends
+defmt = { version = "0.3", optional = true } # for embedded
+
+[features]
+default = ["tlsf", "no_std"]
+# allocators
+tlsf = []
+# exposed easier conf
+std = ["log/std"]
+no_std = ["dep:defmt"]
+
+[profile.dev]
+panic = "abort"
+[profile.release]
+panic = "abort"
+
+[lib]
+doctest = false
+
+[package.metadata.clippy]
+default-features = true
+extra-plugins = [
+    "clippy::pedantic",
+    "clippy::cargo",
+    "+clippy::nursery",
+    "+clippy::style",
+    "+clippy::complexity",
+    "+clippy::perf",
+    "+clippy::correctness",
+    "+clippy::suspicious",
+    "+clippy::deprecated"
+]

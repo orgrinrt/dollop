@@ -15,36 +15,33 @@
 
 </div>
 
+dollop is an early work in progress. No allocator is implemented yet: the workspace scaffolding and
+cargo feature flags are in place, but the public api has not landed. The workspace also contains
+`impligen`, a proc-macro crate for masquerading implicit generics for struct implementations,
+developed alongside the allocator.
+
 ## Features
 
-| Feature  | Status      | Description                                           |
-|----------|-------------|-------------------------------------------------------|
-| `tlsf`   | 🚧 Unstable | tlsf (two-level segregated fit) allocator             |
-| `no_std` | 🚧 Unstable | support for environments without the standard library |
-| `std`    | ❓Planned    | standard library support                              |
+| Feature  | Status    | Description                                           |
+|----------|-----------|-------------------------------------------------------|
+| `tlsf`   | ❓Planned  | tlsf (two-level segregated fit) allocator             |
+| `no_std` | ❓Planned  | support for environments without the standard library |
+| `std`    | ❓Planned  | standard library support                              |
+
+The `tlsf`, `no_std` and `std` cargo features are declared in the manifest, but none of them gates
+working code yet.
 
 ## Usage
 
-### Basic TLSF Allocator Setup
-
-```rust
-
-```
-
-## Example
-
-```rust
-
-```
-
-### In practice
+There is no usable allocator api yet. Usage examples will be added once the first allocator
+(`tlsf`) lands.
 
 ## Compatibility
 
 This crate requires rust `1.64.0` or later.
 
-For practical reasons, we pin the msrv there to utilize ver `1.64.0` cargo's stabilized
-`workspace-inheritance` feature, but also to remain fairly compatible.
+The msrv is pinned there to use cargo's `workspace-inheritance` feature, stabilized in `1.64.0`,
+while staying compatible with older toolchains.
 
 ### Versioning policy
 
@@ -64,4 +61,4 @@ Whether you use this project, have learned something from it, or just like it, p
 
 `SPDX-License-Identifier: MPL-2.0`
 
-> You can check out the full license [here](https://github.com/orgrinrt/dollop/blob/master/LICENSE)
+> You can check out the full license [here](https://github.com/orgrinrt/dollop/blob/main/LICENSE)

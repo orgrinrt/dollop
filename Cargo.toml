@@ -15,9 +15,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
-description = """
-An experimental allocator implementing several strategies with common api patterns for more convenient reuse
-"""
+description = "An experimental allocator implementing several strategies with common api patterns for more convenient reuse"
 license-file = "LICENSE"
 readme = "README.md"
 keywords = []

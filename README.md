@@ -3,15 +3,11 @@
 <div align="center" style="text-align: center;">
 
 [![GitHub Stars](https://img.shields.io/github/stars/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/stargazers)
-[![Crates.io Total Downloads](https://img.shields.io/crates/d/dollop)](https://crates.io/crates/dollop)
 [![GitHub Issues](https://img.shields.io/github/issues/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/issues)
 [![Latest Version](https://img.shields.io/badge/version-0.0.1-red.svg?label=latest)](https://github.com/orgrinrt/dollop)
-![Crates.io Version](https://img.shields.io/crates/v/dollop?logoSize=auto&color=%23FDC700&link=https%3A%2F%2Fcrates.io%2Fcrates%2Fdollop)
-![Crates.io Size](https://img.shields.io/crates/size/dollop?color=%23C27AFF&link=https%3A%2F%2Fcrates.io%2Fcrates%2Fdollop)
 ![GitHub last commit](https://img.shields.io/github/last-commit/orgrinrt/dollop?color=%23009689&link=https%3A%2F%2Fgithub.com%2Forgrinrt%2Fdollop)
 
 > An experimental allocator implementing several strategies with common api patterns for more convenient reuse.
-
 
 </div>
 

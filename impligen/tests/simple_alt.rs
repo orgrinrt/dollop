@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //------------------------------------------------------------------------------
 
-use with_generics::{impl_, with_generics};
+use impligen::{impl_, with_generics};
 
 trait SomeTrait {
     fn compute(&self) -> bool;

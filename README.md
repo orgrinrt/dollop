@@ -18,19 +18,44 @@ developed alongside the allocator.
 
 ## Features
 
-| Feature  | Status    | Description                                           |
-|----------|-----------|-------------------------------------------------------|
-| `tlsf`   | ❓Planned  | tlsf (two-level segregated fit) allocator             |
-| `no_std` | ❓Planned  | support for environments without the standard library |
-| `std`    | ❓Planned  | standard library support                              |
-
-The `tlsf`, `no_std` and `std` cargo features are declared in the manifest, but none of them gates
-working code yet.
+| Feature  | Status       | Description                                           |
+|----------|--------------|-------------------------------------------------------|
+| `tlsf`   | ❎ Implemented | tlsf (two-level segregated fit) allocator             |
+| `no_std` | ❎ Implemented | support for environments without the standard library |
+| `std`    | ❎ Implemented | standard library support                              |
 
 ## Usage
 
-There is no usable allocator api yet. Usage examples will be added once the first allocator
-(`tlsf`) lands.
+An allocator manages a region of memory it is handed, so the caller decides where that region
+comes from: a static array, a page from the operating system, or a slice of a larger arena.
+
+```rust
+use core::alloc::Layout;
+use dollop::{Strategy, Tlsf};
+
+let mut region = [0u8; 4096];
+let mut alloc = Tlsf::new(&mut region).expect("the region holds at least one block");
+
+let layout = Layout::from_size_align(64, 8).unwrap();
+let ptr = alloc.allocate(layout).expect("a fresh region has room");
+unsafe { alloc.deallocate(ptr, layout) };
+```
+
+### Strategies
+
+`Strategy` is the shared contract: `allocate`, `deallocate`, and `free_bytes`. Strategies differ
+in how they choose a free block and how they track the ones they are not using, so swapping one
+for another changes the type named and nothing else.
+
+`Tlsf` is the first. Free blocks are filed by size into classes, indexed by a pair: the first
+level is the power of two the size falls in, the second splits that range into four. A bitmap per
+level records which classes hold anything, so finding a block big enough is a matter of masking
+off the classes that are too small and taking the lowest bit still set, rather than walking a
+list. Blocks carry a header pointing at the block physically before them, so a block being freed
+merges with the free neighbours on either side.
+
+It is not a `GlobalAlloc` yet: that needs the allocator to be shared, which is a synchronisation
+question this does not answer. Allocation is single-threaded for now.
 
 ## Compatibility
 

@@ -326,8 +326,15 @@ impl Strategy for Tlsf {
         }
         let align = layout.align().max(ALIGN);
         let size = align_up(layout.size().max(MIN_PAYLOAD), ALIGN);
-        // an alignment wider than a block's own needs room to shift the payload up to it
-        let search = if align > ALIGN { size + align } else { size };
+        // An alignment wider than a block's own needs room to shift the payload up to it. The
+        // front that is shifted past becomes a block of its own, so when one boundary does not
+        // leave enough room for that the shift goes up a further `align`, and the search covers
+        // the wider case.
+        let search = if align > ALIGN {
+            size + align + size_of::<Header>()
+        } else {
+            size
+        };
 
         let block = self.find_free(search);
         if block.is_null() {
@@ -338,7 +345,13 @@ impl Strategy for Tlsf {
             self.remove_free(block);
 
             let payload = (*block).payload() as usize;
-            let aligned = align_up(payload, align);
+            let mut aligned = align_up(payload, align);
+            if aligned != payload && aligned - payload < size_of::<Header>() + MIN_PAYLOAD {
+                // The front would be too narrow to be a block, and filing a block with no payload
+                // would write its free links over the header that follows it. The next boundary up
+                // always leaves room, and the search reserved for it.
+                aligned += align;
+            }
             let mut block = block;
             if aligned != payload {
                 // the front of this block cannot be used, so it becomes a block of its own. The

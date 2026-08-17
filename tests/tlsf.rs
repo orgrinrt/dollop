@@ -45,7 +45,7 @@ fn allocates_and_returns_space() {
 fn a_zero_sized_request_is_refused() {
     let mut region = [0u8; 1024];
     let mut alloc = Tlsf::new(&mut region).unwrap();
-    assert!(alloc.allocate(layout(0, 1).clone()).is_none() || true);
+    assert!(alloc.allocate(layout(0, 1)).is_none());
 }
 
 #[test]

@@ -93,6 +93,59 @@ fn honours_alignment_beyond_the_default() {
     }
 }
 
+/// The test above takes whatever address the region happens to land on, so it only ever exercises
+/// one offset between the first block and the alignment asked for. The shift the allocator does to
+/// meet a wider alignment depends on exactly that offset, so this walks every one of them.
+#[test]
+fn honours_alignment_from_every_starting_offset() {
+    for align in [32usize, 64, 128, 256] {
+        for off in 0..align {
+            let mut backing = vec![0u8; 8192];
+            let region = &mut backing[off..off + 4096];
+            let mut alloc = Tlsf::new(region).expect("region holds a block");
+            let whole = alloc.free_bytes();
+
+            let l = layout(48, align);
+            let ptr = alloc
+                .allocate(l)
+                .unwrap_or_else(|| panic!("align {} offset {}: no room", align, off));
+            assert_eq!(
+                ptr.as_ptr() as usize % align,
+                0,
+                "align {} offset {}: alignment is met", align, off
+            );
+
+            // A front too narrow to be a block used to be filed as one anyway, which wrote its
+            // free links over the header of the block being handed out. That shows up here as the
+            // region reporting far less free space than one 48-byte block accounts for.
+            let after = alloc.free_bytes();
+            assert!(
+                after + 512 > whole,
+                "align {} offset {}: 48 bytes taken but free went {} -> {}",
+                align, off, whole, after
+            );
+
+            unsafe { stamp(ptr.as_ptr(), 48, 0xC3) };
+            let second = alloc.allocate(l).expect("room for a second block");
+            unsafe { stamp(second.as_ptr(), 48, 0x5C) };
+            assert!(
+                unsafe { check_stamp(ptr.as_ptr(), 48, 0xC3) },
+                "align {} offset {}: the second block overlapped the first", align, off
+            );
+
+            unsafe {
+                alloc.deallocate(ptr, l);
+                alloc.deallocate(second, l);
+            }
+            assert_eq!(
+                alloc.free_bytes(),
+                whole,
+                "align {} offset {}: everything came back", align, off
+            );
+        }
+    }
+}
+
 #[test]
 fn freed_neighbours_merge_back_into_one_block() {
     let mut region = [0u8; 4096];

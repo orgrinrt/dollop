@@ -11,18 +11,18 @@
 
 </div>
 
-dollop is an early work in progress. No allocator is implemented yet: the workspace scaffolding and
-cargo feature flags are in place, but the public api has not landed. The workspace also contains
-`impligen`, a proc-macro crate for masquerading implicit generics for struct implementations,
-developed alongside the allocator.
+dollop is an early work in progress. One allocator has landed, `Tlsf`, behind the `Strategy`
+contract described below. It is not a `GlobalAlloc` and allocation is single-threaded. The
+workspace also contains `impligen`, a proc-macro crate for masquerading implicit generics for
+struct implementations, developed alongside the allocator.
 
 ## Features
 
-| Feature  | Status       | Description                                           |
-|----------|--------------|-------------------------------------------------------|
-| `tlsf`   | ❎ Implemented | tlsf (two-level segregated fit) allocator             |
-| `no_std` | ❎ Implemented | support for environments without the standard library |
-| `std`    | ❎ Implemented | standard library support                              |
+| Feature  | Status         | Description                                                                              |
+|----------|----------------|------------------------------------------------------------------------------------------|
+| `tlsf`   | ✅ Implemented | tlsf (two-level segregated fit) allocator. Note the flag gates nothing today: `Tlsf` is compiled either way |
+| `no_std` | ✅ Implemented | builds the crate without the standard library                                            |
+| `std`    | 🚧 Partial     | turns on `log/std`. The crate itself does not use `log` yet, so this gates no code of its own |
 
 ## Usage
 

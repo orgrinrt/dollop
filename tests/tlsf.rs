@@ -205,7 +205,15 @@ fn a_long_mixed_sequence_keeps_every_block_intact() {
 
     let sizes = [8usize, 17, 33, 64, 100, 250, 12, 48];
     let mut live: Vec<(core::ptr::NonNull<u8>, Layout, u8, usize)> = Vec::new();
-    let mut counter: u8 = 0;
+    // A stamp is one byte, so there are only 255 usable values and a plain counter wraps well
+    // inside this run: 267 allocations are issued, and the 256th would hand a live block a stamp
+    // another live block already holds. Corruption between those two would then be invisible,
+    // because check_stamp would find exactly the byte it expected. Taking the smallest value no
+    // live block is using keeps every live stamp distinct, which is the property the assertion
+    // below actually depends on.
+    let next_stamp = |live: &Vec<(core::ptr::NonNull<u8>, Layout, u8, usize)>| -> u8 {
+        (1u8..=255).find(|v| live.iter().all(|(_, _, s, _)| s != v)).expect("255 live blocks")
+    };
 
     // a fixed pattern rather than a random one, so a failure repeats
     let mut state: usize = 12345;
@@ -218,9 +226,9 @@ fn a_long_mixed_sequence_keeps_every_block_intact() {
             let align = 1usize << ((state >> 4) % 5); // 1, 2, 4, 8, 16
             let l = layout(size, align);
             if let Some(ptr) = alloc.allocate(l) {
-                counter = counter.wrapping_add(1).max(1);
-                unsafe { stamp(ptr.as_ptr(), size, counter) };
-                live.push((ptr, l, counter, size));
+                let value = next_stamp(&live);
+                unsafe { stamp(ptr.as_ptr(), size, value) };
+                live.push((ptr, l, value, size));
             }
         } else {
             let index = (state >> 8) % live.len();

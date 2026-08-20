@@ -8,6 +8,10 @@ description = """
 Masquerading implicit generics for struct implementations
 """
 
+license = "MPL-2.0"
+repository = "https://github.com/orgrinrt/dollop"
+homepage = "https://github.com/orgrinrt/dollop"
+
 [lib]
 proc-macro = true
 

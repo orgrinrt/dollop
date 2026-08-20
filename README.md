@@ -3,48 +3,66 @@
 <div align="center" style="text-align: center;">
 
 [![GitHub Stars](https://img.shields.io/github/stars/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/stargazers)
-[![Crates.io Total Downloads](https://img.shields.io/crates/d/dollop)](https://crates.io/crates/dollop)
 [![GitHub Issues](https://img.shields.io/github/issues/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/issues)
 [![Latest Version](https://img.shields.io/badge/version-0.0.1-red.svg?label=latest)](https://github.com/orgrinrt/dollop)
-![Crates.io Version](https://img.shields.io/crates/v/dollop?logoSize=auto&color=%23FDC700&link=https%3A%2F%2Fcrates.io%2Fcrates%2Fdollop)
-![Crates.io Size](https://img.shields.io/crates/size/dollop?color=%23C27AFF&link=https%3A%2F%2Fcrates.io%2Fcrates%2Fdollop)
 ![GitHub last commit](https://img.shields.io/github/last-commit/orgrinrt/dollop?color=%23009689&link=https%3A%2F%2Fgithub.com%2Forgrinrt%2Fdollop)
 
 > An experimental allocator implementing several strategies with common api patterns for more convenient reuse.
 
-
 </div>
+
+dollop is an early work in progress. One allocator has landed, `Tlsf`, behind the `Strategy`
+contract described below. It is not a `GlobalAlloc` and allocation is single-threaded. The
+workspace also contains `impligen`, a proc-macro crate for masquerading implicit generics for
+struct implementations, developed alongside the allocator.
 
 ## Features
 
-| Feature  | Status      | Description                                           |
-|----------|-------------|-------------------------------------------------------|
-| `tlsf`   | 🚧 Unstable | tlsf (two-level segregated fit) allocator             |
-| `no_std` | 🚧 Unstable | support for environments without the standard library |
-| `std`    | ❓Planned    | standard library support                              |
+| Feature  | Status         | Description                                                                              |
+|----------|----------------|------------------------------------------------------------------------------------------|
+| `tlsf`   | ✅ Implemented | tlsf (two-level segregated fit) allocator. Note the flag gates nothing today: `Tlsf` is compiled either way |
+| `no_std` | ✅ Implemented | builds the crate without the standard library                                            |
+| `std`    | 🚧 Partial     | turns on `log/std`. The crate itself does not use `log` yet, so this gates no code of its own |
 
 ## Usage
 
-### Basic TLSF Allocator Setup
+An allocator manages a region of memory it is handed, so the caller decides where that region
+comes from: a static array, a page from the operating system, or a slice of a larger arena.
 
 ```rust
+use core::alloc::Layout;
+use dollop::{Strategy, Tlsf};
 
+let mut region = [0u8; 4096];
+let mut alloc = Tlsf::new(&mut region).expect("the region holds at least one block");
+
+let layout = Layout::from_size_align(64, 8).unwrap();
+let ptr = alloc.allocate(layout).expect("a fresh region has room");
+unsafe { alloc.deallocate(ptr, layout) };
 ```
 
-## Example
+### Strategies
 
-```rust
+`Strategy` is the shared contract: `allocate`, `deallocate`, and `free_bytes`. Strategies differ
+in how they choose a free block and how they track the ones they are not using, so swapping one
+for another changes the type named and nothing else.
 
-```
+`Tlsf` is the first. Free blocks are filed by size into classes, indexed by a pair: the first
+level is the power of two the size falls in, the second splits that range into four. A bitmap per
+level records which classes hold anything, so finding a block big enough is a matter of masking
+off the classes that are too small and taking the lowest bit still set, rather than walking a
+list. Blocks carry a header pointing at the block physically before them, so a block being freed
+merges with the free neighbours on either side.
 
-### In practice
+It is not a `GlobalAlloc` yet: that needs the allocator to be shared, which is a synchronisation
+question this does not answer. Allocation is single-threaded for now.
 
 ## Compatibility
 
 This crate requires rust `1.64.0` or later.
 
-For practical reasons, we pin the msrv there to utilize ver `1.64.0` cargo's stabilized
-`workspace-inheritance` feature, but also to remain fairly compatible.
+The msrv is pinned there to use cargo's `workspace-inheritance` feature, stabilized in `1.64.0`,
+while staying compatible with older toolchains.
 
 ### Versioning policy
 
@@ -64,4 +82,4 @@ Whether you use this project, have learned something from it, or just like it, p
 
 `SPDX-License-Identifier: MPL-2.0`
 
-> You can check out the full license [here](https://github.com/orgrinrt/dollop/blob/master/LICENSE)
+> You can check out the full license [here](https://github.com/orgrinrt/dollop/blob/main/LICENSE)

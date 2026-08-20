@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //------------------------------------------------------------------------------
 
-use with_generics::{impl_, with_generics};
+use impligen::{impl_, with_generics};
 
 trait SomeTrait {
     fn compute(&self) -> bool;
@@ -25,7 +25,7 @@ pub struct SomeStruct<const MAGIC: usize = 42> {
 
 mod separate_module {
     use super::*;
-    use with_generics::impl_;
+    use impligen::impl_;
 
     pub(crate) trait SomeTraitWithGenerics<T> {
         fn get_value(&self) -> T;

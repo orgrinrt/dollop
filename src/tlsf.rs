@@ -166,15 +166,19 @@ fn mapping_for_request(size: usize) -> (usize, usize) {
 /// let _ = alloc.allocate(Layout::from_size_align(64, 8).unwrap());
 /// ```
 ///
-/// The same program with the region outliving the allocator is accepted:
+/// The same program with the region outliving the allocator is accepted, which is also the worked
+/// example for the crate:
 ///
 /// ```
 /// use core::alloc::Layout;
 /// use dollop::{Strategy, Tlsf};
 ///
 /// let mut region = [0u8; 4096];
-/// let mut alloc = Tlsf::new(&mut region).unwrap();
-/// assert!(alloc.allocate(Layout::from_size_align(64, 8).unwrap()).is_some());
+/// let mut alloc = Tlsf::new(&mut region).expect("the region holds at least one block");
+///
+/// let layout = Layout::from_size_align(64, 8).unwrap();
+/// let ptr = alloc.allocate(layout).expect("a fresh region has room");
+/// unsafe { alloc.deallocate(ptr, layout) };
 /// ```
 pub struct Tlsf<'a> {
     fl_bitmap: usize,

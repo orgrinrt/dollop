@@ -25,17 +25,15 @@ homepage = "https://github.com/orgrinrt/dollop"
 repository = "https://github.com/orgrinrt/dollop"
 
 [dependencies]
-log = { version = "0.4", default-features = false }
-# Optional backends
-defmt = { version = "0.3", optional = true } # for embedded
 
 [features]
 default = ["tlsf", "no_std"]
-# allocators
+# One feature per allocator. Each gates its module, so turning it off removes the code rather
+# than leaving a switch that forwards nothing.
 tlsf = []
-# exposed easier conf
-std = ["log/std"]
-no_std = ["dep:defmt"]
+# Sets `#![no_std]`. There is no paired `std` feature because nothing here needs one: with this
+# off the crate simply compiles against std.
+no_std = []
 
 [profile.dev]
 panic = "abort"

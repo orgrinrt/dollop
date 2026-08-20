@@ -6,24 +6,15 @@
 //!
 //! [`Tlsf`] is the first, a two-level segregated fit allocator: it finds a block big enough in a
 //! fixed number of steps rather than by walking a list, and merges neighbouring free blocks as
-//! they are returned.
-//!
-//! ```
-//! use core::alloc::Layout;
-//! use dollop::{Strategy, Tlsf};
-//!
-//! let mut region = [0u8; 4096];
-//! let mut alloc = Tlsf::new(&mut region).expect("the region holds at least one block");
-//!
-//! let layout = Layout::from_size_align(64, 8).unwrap();
-//! let ptr = alloc.allocate(layout).expect("a fresh region has room");
-//! unsafe { alloc.deallocate(ptr, layout) };
-//! ```
+//! they are returned. Its own documentation carries the worked example, because the example needs
+//! the `tlsf` feature and this page does not.
 
 #![cfg_attr(feature = "no_std", no_std)]
 
 mod strategy;
+#[cfg(feature = "tlsf")]
 mod tlsf;
 
 pub use crate::strategy::Strategy;
+#[cfg(feature = "tlsf")]
 pub use crate::tlsf::Tlsf;

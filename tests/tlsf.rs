@@ -1,3 +1,6 @@
+// The whole file is about the tlsf allocator, which the feature can remove.
+#![cfg(feature = "tlsf")]
+
 //! The allocator hands out memory, so the checks that matter are that two live blocks never
 //! overlap, that a block is aligned and writable for its whole length, and that space comes back
 //! when it is freed.

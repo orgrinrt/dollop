@@ -11,6 +11,7 @@
 //! keep their list links inside the payload, which costs nothing: the space is not in use.
 
 use core::alloc::Layout;
+use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
 use core::ptr::{null_mut, NonNull};
 
@@ -138,24 +139,63 @@ fn mapping_for_request(size: usize) -> (usize, usize) {
 }
 
 /// A two-level segregated fit allocator over a region of memory.
-pub struct Tlsf {
+///
+/// The lifetime is the region's. Every pointer this hands out points into that region, and the
+/// bookkeeping lives there too, so the allocator may not outlive it. `'a` is what enforces that:
+/// without it, `new` would be a safe function that turns a borrow into an owned value and every
+/// later `allocate` would be a use-after-free reachable from entirely safe code.
+///
+/// The marker is what ties `'a` to the struct, since the pointers below are raw and carry no
+/// lifetime of their own. It is invariant in `'a`, which is the conservative choice and the right
+/// one here: the region is written through, not merely read.
+///
+/// Outliving the region is refused, and the refusal is pinned here so that loosening the bound
+/// breaks the suite rather than silently restoring a use-after-free reachable from safe code:
+///
+/// ```compile_fail,E0597
+/// # // The error code is documentation, not enforcement: rustdoc on the pinned 1.64 toolchain
+/// # // accepts any code here. What binds is the block below failing to compile at all, which it
+/// # // stops doing the moment the lifetime is removed.
+/// use core::alloc::Layout;
+/// use dollop::{Strategy, Tlsf};
+///
+/// let mut alloc = {
+///     let mut region = [0u8; 4096];
+///     Tlsf::new(&mut region).unwrap()
+/// };
+/// let _ = alloc.allocate(Layout::from_size_align(64, 8).unwrap());
+/// ```
+///
+/// The same program with the region outliving the allocator is accepted:
+///
+/// ```
+/// use core::alloc::Layout;
+/// use dollop::{Strategy, Tlsf};
+///
+/// let mut region = [0u8; 4096];
+/// let mut alloc = Tlsf::new(&mut region).unwrap();
+/// assert!(alloc.allocate(Layout::from_size_align(64, 8).unwrap()).is_some());
+/// ```
+pub struct Tlsf<'a> {
     fl_bitmap: usize,
     sl_bitmaps: [usize; FL_COUNT],
     heads: [[*mut Header; SL_COUNT]; FL_COUNT],
     free: usize,
+    region: PhantomData<&'a mut [u8]>,
 }
 
-impl Tlsf {
+impl<'a> Tlsf<'a> {
     /// Creates an allocator that hands out parts of `region`.
     ///
     /// Returns `None` when the region is too small to hold a single block. The allocator borrows
     /// the region for its whole life and writes its bookkeeping into it.
-    pub fn new(region: &mut [u8]) -> Option<Self> {
+    pub fn new(region: &'a mut [u8]) -> Option<Self> {
         let mut this = Tlsf {
             fl_bitmap: 0,
             sl_bitmaps: [0; FL_COUNT],
             heads: [[null_mut(); SL_COUNT]; FL_COUNT],
             free: 0,
+            region: PhantomData,
         };
 
         let start = region.as_mut_ptr();
@@ -319,7 +359,7 @@ impl Tlsf {
     }
 }
 
-impl Strategy for Tlsf {
+impl Strategy for Tlsf<'_> {
     fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
         if layout.size() == 0 {
             return None;

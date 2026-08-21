@@ -4,6 +4,9 @@ members = ["impligen"]
 [workspace.package]
 version = "0.0.1"
 edition = "2018"
+# Applies to the default feature set. `no_alloc` raises it, because notko is edition 2024
+# and cargo has no way to say a feature has a floor of its own; `tests/msrv.rs` checks the
+# default set under this and says so.
 rust-version = "1.64.0"
 authors = ["orgrinrt", "Hiisi Digital"]
 
@@ -25,6 +28,10 @@ homepage = "https://github.com/orgrinrt/dollop"
 repository = "https://github.com/orgrinrt/dollop"
 
 [dependencies]
+# Only under `no_alloc`, where it supplies the lending contract `Lease` satisfies. notko
+# is not on crates.io yet, so this is a git dependency, and a crate carrying `no_alloc`
+# cannot be published until it is.
+notko = { git = "ssh://git@github.com/orgrinrt/notko.git", branch = "dev", optional = true, default-features = false }
 
 [features]
 default = ["tlsf", "no_std"]
@@ -34,11 +41,22 @@ tlsf = []
 # Sets `#![no_std]`. There is no paired `std` feature because nothing here needs one: with this
 # off the crate simply compiles against std.
 no_std = []
+# Adds `Lease`, which presents a block from any `Strategy` as storage satisfying notko's
+# lending contract. Nothing here allocates in the `alloc` sense either way: the memory is
+# the region the strategy was handed at construction. What the feature adds is the join
+# between an allocator and everything written against that contract.
+no_alloc = ["no_std", "dep:notko"]
 
 [profile.dev]
 panic = "abort"
 [profile.release]
 panic = "abort"
+
+# The lending example needs the feature the lending API is behind. Without this,
+# `cargo build --examples` on the default selection fails on a feature nobody asked for.
+[[example]]
+name = "lending_from_an_allocator"
+required-features = ["no_alloc", "tlsf"]
 
 [lib]
 doctest = true

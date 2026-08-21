@@ -1,2 +1,12 @@
+# Stable, not the MSRV.
+#
+# This pinned `1.64.0`, which is the crate's declared minimum, so every build here was an
+# MSRV build and no build was ever a current one. That hides whatever the current compiler
+# has to say, and it makes a dependency that has moved on unusable: `no_alloc` pulls notko,
+# whose manifest is edition 2024, and 1.64's cargo cannot parse it at all.
+#
+# The minimum is still declared, and still checked. `tests/msrv.rs` builds the default
+# feature set under it, which is where the claim belongs: as something run rather than as
+# something the whole repository is held to.
 [toolchain]
-channel = "1.64.0"
+channel = "stable"

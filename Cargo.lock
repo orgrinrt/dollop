@@ -5,6 +5,9 @@ version = 3
 [[package]]
 name = "dollop"
 version = "0.0.1"
+dependencies = [
+ "notko",
+]
 
 [[package]]
 name = "impligen"
@@ -15,6 +18,11 @@ dependencies = [
  "quote",
  "syn 2.0.100",
 ]
+
+[[package]]
+name = "notko"
+version = "0.0.0"
+source = "git+ssh://git@github.com/orgrinrt/notko.git?branch=dev#3992c8b38f4decc7293ad34e566e11595f61859a"
 
 [[package]]
 name = "proc-macro-error"

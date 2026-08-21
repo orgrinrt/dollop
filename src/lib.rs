@@ -11,10 +11,22 @@
 
 #![cfg_attr(feature = "no_std", no_std)]
 
+#[cfg(feature = "no_alloc")]
+mod lending;
 mod strategy;
 #[cfg(feature = "tlsf")]
 mod tlsf;
 
+#[cfg(feature = "no_alloc")]
+pub use crate::lending::{Lease, Leasing};
 pub use crate::strategy::Strategy;
 #[cfg(feature = "tlsf")]
 pub use crate::tlsf::Tlsf;
+
+// The lending contract answers in notko's types, so they are re-exported here. Without
+// this a consumer has to take a direct dependency on notko in order to fill what this
+// crate handed it, which is a dependency it did not choose and would have to keep in step.
+#[cfg(feature = "no_alloc")]
+pub use notko::lend::{Exhausted, Fill, Lend};
+#[cfg(feature = "no_alloc")]
+pub use notko::outcome::Outcome;

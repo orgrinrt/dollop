@@ -1,0 +1,11 @@
+error[E0200]: the trait `Strategy` requires an `unsafe impl` declaration
+  --> tests/ui/a_safe_impl_of_strategy_is_refused.rs:13:1
+   |
+13 | impl Strategy for Liar {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `Strategy` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+help: add `unsafe` to this trait implementation
+   |
+13 | unsafe impl Strategy for Liar {
+   | ++++++

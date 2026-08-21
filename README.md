@@ -18,11 +18,21 @@ struct implementations, developed alongside the allocator.
 
 ## Features
 
-| Feature  | Status         | Description                                                                              |
-|----------|----------------|------------------------------------------------------------------------------------------|
-| `tlsf`   | ✅ Implemented | tlsf (two-level segregated fit) allocator. Note the flag gates nothing today: `Tlsf` is compiled either way |
-| `no_std` | ✅ Implemented | builds the crate without the standard library                                            |
-| `std`    | 🚧 Partial     | turns on `log/std`. The crate itself does not use `log` yet, so this gates no code of its own |
+| Feature | Default | What it does |
+|---|---|---|
+| `tlsf` | yes | The two-level segregated fit allocator. Gates the module, so turning it off removes the code rather than leaving a switch that forwards nothing. |
+| `no_std` | no | Sets `#![no_std]`. There is no paired `std` feature, because nothing here needs one: with this off the crate compiles against std. It is off by default so that turning it on is the consumer's decision: cargo unifies features across a dependency graph, so a default `no_std` would put every consumer of every sibling crate into `no_std` without any of them asking. |
+| `no_alloc` | no | Adds `Lease`, which presents a block from any `Strategy` as storage satisfying notko's lending contract. Implies `no_std`. |
+
+Nothing here allocates in the `alloc` sense under any selection. The memory is always the
+region a strategy was handed at construction, and `no_alloc` is not about removing an
+allocation but about joining this crate to everything written against a contract for storage
+somebody else obtained.
+
+`tests/feature_matrix.rs` builds every selection, and the table above is checked against the
+manifest by `tests/readme.rs`, because a feature table is a claim about the manifest and this
+one had drifted: it documented a `std` feature the manifest does not have, and said `tlsf`
+gated nothing, which stopped being true.
 
 ## Usage
 
@@ -57,12 +67,34 @@ merges with the free neighbours on either side.
 It is not a `GlobalAlloc` yet: that needs the allocator to be shared, which is a synchronisation
 question this does not answer. Allocation is single-threaded for now.
 
+## Examples
+
+```text
+cargo run --example one_region
+cargo run --example lending_from_an_allocator --features no_alloc
+```
+
+The first takes three blocks of different sizes and alignments out of a 4 KiB array on the
+stack and gives them all back, printing the free count at each step. The second is a whole
+program with one region and nothing underneath it: a fixed-budget event buffer that batches
+readings into a block taken from the allocator, summarises them, and returns it, with notko's
+`Fill` doing the filling and knowing nothing about where the storage came from.
+
+Both are run by `cargo test`, in `tests/examples_run.rs`, which reads the free counts back
+and checks they match. An example that leaked one block per round would print a plausible
+falling number and look fine.
+
 ## Compatibility
 
-This crate requires rust `1.64.0` or later.
+The default feature set requires rust `1.64.0` or later, for cargo's `workspace-inheritance`,
+stabilized there.
 
-The msrv is pinned there to use cargo's `workspace-inheritance` feature, stabilized in `1.64.0`,
-while staying compatible with older toolchains.
+`no_alloc` requires more, because notko is edition 2024 and cargo has no way to declare a
+floor per feature. `tests/feature_matrix.rs` builds the default set under 1.64.0 and says so;
+it is `#[ignore]`d, since it needs a toolchain most machines do not have.
+
+The repository's `rust-toolchain.toml` says `stable`, not the minimum. It used to say
+`1.64.0`, which meant every build here was an MSRV build and none was ever a current one.
 
 ### Versioning policy
 

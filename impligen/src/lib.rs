@@ -7,7 +7,7 @@
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::{format_ident, quote};
-use syn::token::Brace;
+
 use syn::{
     braced, parse::Parse, parse::ParseStream, parse_macro_input, punctuated::Punctuated,
     GenericParam, Ident, ItemStruct, Path, Token,
@@ -132,43 +132,6 @@ pub fn with_generics(attrs: TokenStream, item: TokenStream) -> TokenStream {
     output.into()
 }
 
-struct ImplInput {
-    trait_path: Option<syn::Path>,
-    for_token: Token![for],
-    struct_name: Ident,
-    body: proc_macro2::TokenStream,
-}
-
-impl Parse for ImplInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        // Check if this is a Self impl or trait impl
-        let lookahead = input.lookahead1();
-        let trait_path = if lookahead.peek(syn::token::Brace) || lookahead.peek(Token![Self]) {
-            None
-        } else {
-            Some(input.parse()?)
-        };
-
-        // Parse the 'for' token
-        let for_token = input.parse()?;
-
-        // Parse the struct name
-        let struct_name: Ident = input.parse()?;
-
-        // Parse the body
-        let content;
-        braced!(content in input);
-        let body = content.parse()?;
-
-        Ok(ImplInput {
-            trait_path,
-            for_token,
-            struct_name,
-            body,
-        })
-    }
-}
-
 struct MultiImplInput {
     impls: Vec<ImplItem>,
 }
@@ -193,14 +156,11 @@ impl Parse for MultiImplInput {
 enum ImplItem {
     TraitImpl {
         trait_path: Path,
-        for_token: Token![for],
         struct_name: Ident,
-        brace_token: Brace,
         body: proc_macro2::TokenStream,
     },
     SelfImpl {
         struct_name: Ident,
-        brace_token: Brace,
         body: proc_macro2::TokenStream,
     },
 }
@@ -219,30 +179,24 @@ impl Parse for ImplItem {
             let struct_name = input.parse()?;
 
             let content;
-            let brace_token = braced!(content in input);
+            braced!(content in input);
             let body = content.parse()?;
 
-            return Ok(ImplItem::SelfImpl {
-                struct_name,
-                brace_token,
-                body,
-            });
+            return Ok(ImplItem::SelfImpl { struct_name, body });
         }
 
         // If not, it must be a trait impl
         let trait_path = input.parse()?;
-        let for_token = input.parse()?;
+        let _: Token![for] = input.parse()?;
         let struct_name = input.parse()?;
 
         let content;
-        let brace_token = braced!(content in input);
+        braced!(content in input);
         let body = content.parse()?;
 
         Ok(ImplItem::TraitImpl {
             trait_path,
-            for_token,
             struct_name,
-            brace_token,
             body,
         })
     }

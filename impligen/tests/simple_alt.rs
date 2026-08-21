@@ -73,6 +73,9 @@ fn test_inherent_methods() {
     // test with default const value (42)
     assert!(instance.compute());
     assert!(instance.is_first_equal_to(Wrapper(10)));
-    assert!(instance.is_first_equal_to(Wrapper(20)));
+    // `first` is `Wrapper(10)`, so it is not also `Wrapper(20)`. This asserted that it was,
+    // which is what had the suite red: the generated method is a real equality check, and
+    // the two assertions together said one value equalled both.
+    assert!(!instance.is_first_equal_to(Wrapper(20)));
     assert!(instance.get_second());
 }

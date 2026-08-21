@@ -19,13 +19,14 @@ struct Wrapper<T: Copy>(T);
     U: Copy,
 )]
 pub struct SomeStruct<const MAGIC: usize = 42> {
-    first: T,
+    first:  T,
     second: U,
 }
 
 mod separate_module {
-    use super::*;
     use impligen::impl_;
+
+    use super::*;
 
     pub(crate) trait SomeTraitWithGenerics<T> {
         fn get_value(&self) -> T;
@@ -60,7 +61,7 @@ mod separate_module {
     #[test]
     fn test_separate_module() {
         let instance: SomeStruct<Wrapper<i32>, bool> = SomeStruct {
-            first: Wrapper(10),
+            first:  Wrapper(10),
             second: true,
         };
 
@@ -87,7 +88,7 @@ impl_!(
 #[test]
 fn test_cross_module_visibility() {
     let instance: SomeStruct<Wrapper<i32>, bool> = SomeStruct {
-        first: Wrapper(10),
+        first:  Wrapper(10),
         second: true,
     };
 

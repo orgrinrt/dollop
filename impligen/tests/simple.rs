@@ -24,7 +24,7 @@ struct Wrapper<T: Copy>(T);
     const MAGIC: usize = 42
 )]
 pub struct SomeStruct {
-    first: T,
+    first:  T,
     second: U,
 }
 
@@ -57,7 +57,7 @@ impl_!(
 #[test]
 fn test_trait_impls() {
     let instance: SomeStruct<Wrapper<i32>, bool, 100> = SomeStruct {
-        first: Wrapper(10),
+        first:  Wrapper(10),
         second: true,
     };
 
@@ -70,16 +70,17 @@ fn test_trait_impls() {
 #[test]
 fn test_inherent_methods() {
     let instance: SomeStruct<Wrapper<i32>, bool> = SomeStruct {
-        first: Wrapper(10),
+        first:  Wrapper(10),
         second: true,
     };
 
     // test with default const value (42)
     assert!(instance.compute());
     assert!(instance.is_first_equal_to(Wrapper(10)));
-    // `first` is `Wrapper(10)`, so it is not also `Wrapper(20)`. This line asserted that it
-    // was, which is what had the suite red: the generated method is a real equality check,
-    // and the two assertions together said the same value equalled both.
+    // `first` is `Wrapper(10)`, so it is not also `Wrapper(20)`. This line asserted
+    // that it was, which is what had the suite red: the generated method is a
+    // real equality check, and the two assertions together said the same value
+    // equalled both.
     assert!(!instance.is_first_equal_to(Wrapper(20)));
     assert!(instance.get_second());
 }

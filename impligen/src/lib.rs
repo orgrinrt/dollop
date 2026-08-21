@@ -7,11 +7,9 @@
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::{format_ident, quote};
-
-use syn::{
-    braced, parse::Parse, parse::ParseStream, parse_macro_input, punctuated::Punctuated,
-    GenericParam, Ident, ItemStruct, Path, Token,
-};
+use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
+use syn::{braced, parse_macro_input, GenericParam, Ident, ItemStruct, Path, Token};
 
 struct ExtraGenerics {
     params: Punctuated<GenericParam, Token![,]>,
@@ -70,19 +68,21 @@ pub fn with_generics(attrs: TokenStream, item: TokenStream) -> TokenStream {
     let generic_args: Vec<_> = combined_generics
         .params
         .iter()
-        .map(|param| match param {
-            GenericParam::Type(type_param) => {
-                let ident = &type_param.ident;
-                quote!(#ident)
-            },
-            GenericParam::Const(const_param) => {
-                let ident = &const_param.ident;
-                quote!(#ident)
-            },
-            GenericParam::Lifetime(lifetime_param) => {
-                let lifetime = &lifetime_param.lifetime;
-                quote!(#lifetime)
-            },
+        .map(|param| {
+            match param {
+                GenericParam::Type(type_param) => {
+                    let ident = &type_param.ident;
+                    quote!(#ident)
+                },
+                GenericParam::Const(const_param) => {
+                    let ident = &const_param.ident;
+                    quote!(#ident)
+                },
+                GenericParam::Lifetime(lifetime_param) => {
+                    let lifetime = &lifetime_param.lifetime;
+                    quote!(#lifetime)
+                },
+            }
         })
         .collect();
 
@@ -155,13 +155,13 @@ impl Parse for MultiImplInput {
 
 enum ImplItem {
     TraitImpl {
-        trait_path: Path,
+        trait_path:  Path,
         struct_name: Ident,
-        body: proc_macro2::TokenStream,
+        body:        proc_macro2::TokenStream,
     },
     SelfImpl {
         struct_name: Ident,
-        body: proc_macro2::TokenStream,
+        body:        proc_macro2::TokenStream,
     },
 }
 
@@ -182,7 +182,10 @@ impl Parse for ImplItem {
             braced!(content in input);
             let body = content.parse()?;
 
-            return Ok(ImplItem::SelfImpl { struct_name, body });
+            return Ok(ImplItem::SelfImpl {
+                struct_name,
+                body,
+            });
         }
 
         // If not, it must be a trait impl

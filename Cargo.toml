@@ -31,10 +31,10 @@ repository = "https://github.com/orgrinrt/dollop"
 # Only under `no_alloc`, where it supplies the lending contract `Lease` satisfies. notko
 # is not on crates.io yet, so this is a git dependency, and a crate carrying `no_alloc`
 # cannot be published until it is.
-notko = { git = "ssh://git@github.com/orgrinrt/notko.git", branch = "dev", optional = true, default-features = false }
+notko = { git = "https://github.com/orgrinrt/notko.git", branch = "dev", optional = true, default-features = false }
 
 [features]
-default = ["tlsf", "no_std"]
+default = ["tlsf"]
 # One feature per allocator. Each gates its module, so turning it off removes the code rather
 # than leaving a switch that forwards nothing.
 tlsf = []
@@ -74,3 +74,8 @@ extra-plugins = [
     "+clippy::suspicious",
     "+clippy::deprecated"
 ]
+
+[dev-dependencies]
+# The safety contract on `Strategy` is a compile-time refusal, so the test for it is a build
+# failure. trybuild is how a build failure becomes something that runs in the suite.
+trybuild = "1.0"

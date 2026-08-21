@@ -21,7 +21,7 @@ struct implementations, developed alongside the allocator.
 | Feature | Default | What it does |
 |---|---|---|
 | `tlsf` | yes | The two-level segregated fit allocator. Gates the module, so turning it off removes the code rather than leaving a switch that forwards nothing. |
-| `no_std` | yes | Sets `#![no_std]`. There is no paired `std` feature, because nothing here needs one: with this off the crate compiles against std. |
+| `no_std` | no | Sets `#![no_std]`. There is no paired `std` feature, because nothing here needs one: with this off the crate compiles against std. It is off by default so that turning it on is the consumer's decision: cargo unifies features across a dependency graph, so a default `no_std` would put every consumer of every sibling crate into `no_std` without any of them asking. |
 | `no_alloc` | no | Adds `Lease`, which presents a block from any `Strategy` as storage satisfying notko's lending contract. Implies `no_std`. |
 
 Nothing here allocates in the `alloc` sense under any selection. The memory is always the

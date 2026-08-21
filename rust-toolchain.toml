@@ -1,4 +1,4 @@
-# Stable, not the MSRV.
+# The workspace nightly, not the MSRV, and not a floating channel.
 #
 # This pinned `1.64.0`, which is the crate's declared minimum, so every build here was an
 # MSRV build and no build was ever a current one. That hides whatever the current compiler
@@ -8,5 +8,11 @@
 # The minimum is still declared, and still checked. `tests/msrv.rs` builds the default
 # feature set under it, which is where the claim belongs: as something run rather than as
 # something the whole repository is held to.
+#
+# It is nightly rather than `stable` for two reasons. `rustfmt.toml` here sets thirty-odd
+# options that only nightly rustfmt accepts, so under stable `cargo fmt` refuses the config
+# and formats to defaults instead, which is the repository silently not applying its own
+# style. And a floating channel drifts between checkouts, so the date is written down. This
+# is the same pin every other repository in the workspace carries.
 [toolchain]
-channel = "stable"
+channel = "nightly-2026-05-28"

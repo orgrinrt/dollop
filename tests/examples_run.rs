@@ -1,8 +1,10 @@
-//! The examples are built by `cargo test` and never run by it, so they are run here.
+//! The examples are built by `cargo test` and never run by it, so they are run
+//! here.
 //!
-//! For an allocator the risk is specific and invisible from a passing run: the numbers are
-//! the whole content, and an example that leaked a block every round would print a
-//! plausible falling count and look fine. These check the count comes back.
+//! For an allocator the risk is specific and invisible from a passing run: the
+//! numbers are the whole content, and an example that leaked a block every
+//! round would print a plausible falling count and look fine. These check the
+//! count comes back.
 
 use std::process::Command;
 
@@ -12,7 +14,10 @@ fn run_example(name: &str, features: &[&str]) -> String {
     command
         .args(&["run", "-q", "--example", name])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .env("CARGO_TARGET_DIR", concat!(env!("CARGO_MANIFEST_DIR"), "/target/examples"));
+        .env(
+            "CARGO_TARGET_DIR",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/target/examples"),
+        );
     if !features.is_empty() {
         command.args(&["--features", &features.join(",")]);
     }
@@ -36,8 +41,8 @@ fn run_example(name: &str, features: &[&str]) -> String {
 fn one_region_takes_blocks_and_gives_them_all_back() {
     let out = run_example("one_region", &[]);
 
-    // The free count at the start and at the end. Equal, or a block was lost, and a leak of
-    // one block is exactly what a plausible-looking run hides.
+    // The free count at the start and at the end. Equal, or a block was lost, and a
+    // leak of one block is exactly what a plausible-looking run hides.
     let free_at_start = out
         .lines()
         .find_map(|line| line.strip_prefix("a 4096 byte region, with "))
@@ -52,10 +57,14 @@ fn one_region_takes_blocks_and_gives_them_all_back() {
         .and_then(|rest| rest.split(' ').next())
         .expect("the last return line");
 
-    assert_eq!(free_at_start, free_at_end, "a block was not returned:\n{}", out);
+    assert_eq!(
+        free_at_start, free_at_end,
+        "a block was not returned:\n{}",
+        out
+    );
 
-    // And each allocation was aligned as asked, which is the property the example claims
-    // and the one a wrong free-list would break silently.
+    // And each allocation was aligned as asked, which is the property the example
+    // claims and the one a wrong free-list would break silently.
     assert_eq!(
         out.matches("address aligned: true").count(),
         3,
@@ -63,20 +72,32 @@ fn one_region_takes_blocks_and_gives_them_all_back() {
         out,
     );
 
-    assert!(out.contains("one megabyte: None"), "an impossible request was served:\n{}", out);
+    assert!(
+        out.contains("one megabyte: None"),
+        "an impossible request was served:\n{}",
+        out
+    );
 }
 
 #[test]
 fn the_lending_example_returns_the_region_whole() {
     let out = run_example("lending_from_an_allocator", &["no_alloc"]);
 
-    // The batches, with their sums, so a wrong fill fails here rather than only a missing
-    // one.
-    assert!(out.contains("batch 0: 4 readings, 2 sensors, sum 34"), "{}", out);
-    assert!(out.contains("batch 1: 4 readings, 3 sensors, sum 223"), "{}", out);
+    // The batches, with their sums, so a wrong fill fails here rather than only a
+    // missing one.
+    assert!(
+        out.contains("batch 0: 4 readings, 2 sensors, sum 34"),
+        "{}",
+        out
+    );
+    assert!(
+        out.contains("batch 1: 4 readings, 3 sensors, sum 223"),
+        "{}",
+        out
+    );
 
-    // The region whole again, which is the claim a leak would break. Both lines carry the
-    // same number, and it is read rather than assumed.
+    // The region whole again, which is the claim a leak would break. Both lines
+    // carry the same number, and it is read rather than assumed.
     let free = out
         .lines()
         .find_map(|line| line.strip_suffix(" bytes free, the same as at the start"))

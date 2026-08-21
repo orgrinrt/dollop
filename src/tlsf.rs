@@ -1,14 +1,17 @@
 //! Two-level segregated fit.
 //!
-//! Free blocks are filed by size into classes, and the class index is a pair: the first level is
-//! the power of two the size falls in, the second splits that range into [`SL_COUNT`] even parts.
-//! A bitmap per level records which classes hold anything, so finding a block big enough is a
-//! matter of masking off the classes that are too small and taking the lowest bit that is still
-//! set. That is a fixed amount of work rather than a walk, which is the point of the arrangement.
+//! Free blocks are filed by size into classes, and the class index is a pair:
+//! the first level is the power of two the size falls in, the second splits
+//! that range into [`SL_COUNT`] even parts. A bitmap per level records which
+//! classes hold anything, so finding a block big enough is a matter of masking
+//! off the classes that are too small and taking the lowest bit that is still
+//! set. That is a fixed amount of work rather than a walk, which is the point
+//! of the arrangement.
 //!
-//! Blocks carry a header with their size and a pointer to the block physically before them, so a
-//! block being freed can be merged with the neighbours on either side. Free blocks additionally
-//! keep their list links inside the payload, which costs nothing: the space is not in use.
+//! Blocks carry a header with their size and a pointer to the block physically
+//! before them, so a block being freed can be merged with the neighbours on
+//! either side. Free blocks additionally keep their list links inside the
+//! payload, which costs nothing: the space is not in use.
 
 use core::alloc::Layout;
 use core::marker::PhantomData;
@@ -24,7 +27,8 @@ const SL_BITS: u32 = 2;
 const MIN_PAYLOAD: usize = size_of::<FreeLinks>();
 /// Every block payload starts at this alignment.
 const ALIGN: usize = align_of::<usize>() * 2;
-/// The first level starts at [`MIN_PAYLOAD`], so smaller sizes all land in class zero.
+/// The first level starts at [`MIN_PAYLOAD`], so smaller sizes all land in
+/// class zero.
 const FL_SHIFT: u32 = MIN_PAYLOAD.trailing_zeros();
 /// Enough first-level classes to reach any size a `usize` can express.
 const FL_COUNT: usize = (usize::BITS - FL_SHIFT) as usize;
@@ -36,11 +40,12 @@ const FLAG_MASK: usize = 0b11;
 /// Sits immediately before every block's payload, allocated or free.
 #[repr(C)]
 struct Header {
-    /// Payload size, with [`FLAG_FREE`] and [`FLAG_LAST`] in the low bits. Sizes are a multiple
-    /// of [`ALIGN`], so those bits are free to use.
+    /// Payload size, with [`FLAG_FREE`] and [`FLAG_LAST`] in the low bits.
+    /// Sizes are a multiple of [`ALIGN`], so those bits are free to use.
     size_and_flags: usize,
-    /// The block physically before this one, or null for the first block in the region.
-    prev_phys: *mut Header,
+    /// The block physically before this one, or null for the first block in the
+    /// region.
+    prev_phys:      *mut Header,
 }
 
 /// Written into a free block's payload to thread it onto its size class's list.
@@ -81,8 +86,8 @@ impl Header {
         }
     }
 
-    /// The payload, which is where the caller's bytes go, and where the free links live while the
-    /// block is on a list.
+    /// The payload, which is where the caller's bytes go, and where the free
+    /// links live while the block is on a list.
     #[inline]
     fn payload(&mut self) -> *mut u8 {
         // safety: a header is always followed by its payload, by construction
@@ -124,8 +129,8 @@ fn mapping(size: usize) -> (usize, usize) {
 
 /// The class to start searching from for a request of `size`.
 ///
-/// Rounding up first means every block filed in the class that is found is big enough, so the
-/// search never has to look at a block to reject it.
+/// Rounding up first means every block filed in the class that is found is big
+/// enough, so the search never has to look at a block to reject it.
 #[inline]
 fn mapping_for_request(size: usize) -> (usize, usize) {
     if size >= MIN_PAYLOAD {
@@ -140,17 +145,20 @@ fn mapping_for_request(size: usize) -> (usize, usize) {
 
 /// A two-level segregated fit allocator over a region of memory.
 ///
-/// The lifetime is the region's. Every pointer this hands out points into that region, and the
-/// bookkeeping lives there too, so the allocator may not outlive it. `'a` is what enforces that:
-/// without it, `new` would be a safe function that turns a borrow into an owned value and every
-/// later `allocate` would be a use-after-free reachable from entirely safe code.
+/// The lifetime is the region's. Every pointer this hands out points into that
+/// region, and the bookkeeping lives there too, so the allocator may not
+/// outlive it. `'a` is what enforces that: without it, `new` would be a safe
+/// function that turns a borrow into an owned value and every later `allocate`
+/// would be a use-after-free reachable from entirely safe code.
 ///
-/// The marker is what ties `'a` to the struct, since the pointers below are raw and carry no
-/// lifetime of their own. It is invariant in `'a`, which is the conservative choice and the right
-/// one here: the region is written through, not merely read.
+/// The marker is what ties `'a` to the struct, since the pointers below are raw
+/// and carry no lifetime of their own. It is invariant in `'a`, which is the
+/// conservative choice and the right one here: the region is written through,
+/// not merely read.
 ///
-/// Outliving the region is refused, and the refusal is pinned here so that loosening the bound
-/// breaks the suite rather than silently restoring a use-after-free reachable from safe code:
+/// Outliving the region is refused, and the refusal is pinned here so that
+/// loosening the bound breaks the suite rather than silently restoring a
+/// use-after-free reachable from safe code:
 ///
 /// ```compile_fail,E0597
 /// # // The error code is documentation, not enforcement: rustdoc on the pinned 1.64 toolchain
@@ -166,40 +174,43 @@ fn mapping_for_request(size: usize) -> (usize, usize) {
 /// let _ = alloc.allocate(Layout::from_size_align(64, 8).unwrap());
 /// ```
 ///
-/// The same program with the region outliving the allocator is accepted, which is also the worked
-/// example for the crate:
+/// The same program with the region outliving the allocator is accepted, which
+/// is also the worked example for the crate:
 ///
 /// ```
 /// use core::alloc::Layout;
+///
 /// use dollop::{Strategy, Tlsf};
 ///
 /// let mut region = [0u8; 4096];
-/// let mut alloc = Tlsf::new(&mut region).expect("the region holds at least one block");
+/// let mut alloc =
+///     Tlsf::new(&mut region).expect("the region holds at least one block");
 ///
 /// let layout = Layout::from_size_align(64, 8).unwrap();
 /// let ptr = alloc.allocate(layout).expect("a fresh region has room");
 /// unsafe { alloc.deallocate(ptr, layout) };
 /// ```
 pub struct Tlsf<'a> {
-    fl_bitmap: usize,
+    fl_bitmap:  usize,
     sl_bitmaps: [usize; FL_COUNT],
-    heads: [[*mut Header; SL_COUNT]; FL_COUNT],
-    free: usize,
-    region: PhantomData<&'a mut [u8]>,
+    heads:      [[*mut Header; SL_COUNT]; FL_COUNT],
+    free:       usize,
+    region:     PhantomData<&'a mut [u8]>,
 }
 
 impl<'a> Tlsf<'a> {
     /// Creates an allocator that hands out parts of `region`.
     ///
-    /// Returns `None` when the region is too small to hold a single block. The allocator borrows
-    /// the region for its whole life and writes its bookkeeping into it.
+    /// Returns `None` when the region is too small to hold a single block. The
+    /// allocator borrows the region for its whole life and writes its
+    /// bookkeeping into it.
     pub fn new(region: &'a mut [u8]) -> Option<Self> {
         let mut this = Tlsf {
-            fl_bitmap: 0,
+            fl_bitmap:  0,
             sl_bitmaps: [0; FL_COUNT],
-            heads: [[null_mut(); SL_COUNT]; FL_COUNT],
-            free: 0,
-            region: PhantomData,
+            heads:      [[null_mut(); SL_COUNT]; FL_COUNT],
+            free:       0,
+            region:     PhantomData,
         };
 
         let start = region.as_mut_ptr();
@@ -219,7 +230,7 @@ impl<'a> Tlsf<'a> {
         unsafe {
             header.write(Header {
                 size_and_flags: payload | FLAG_FREE | FLAG_LAST,
-                prev_phys: null_mut(),
+                prev_phys:      null_mut(),
             });
             this.insert_free(header);
         }
@@ -297,7 +308,8 @@ impl<'a> Tlsf<'a> {
         self.heads[fl_index][sl_index]
     }
 
-    /// Splits `block` so it holds exactly `size`, filing the remainder if one is worth keeping.
+    /// Splits `block` so it holds exactly `size`, filing the remainder if one
+    /// is worth keeping.
     unsafe fn split(&mut self, block: *mut Header, size: usize) {
         let total = (*block).size();
         let needed = size + size_of::<Header>();
@@ -307,8 +319,8 @@ impl<'a> Tlsf<'a> {
         }
 
         let rest_size = total - needed;
-        // the remainder's header sits immediately after this block's payload, which is where
-        // next_phys() looks for it
+        // the remainder's header sits immediately after this block's payload, which is
+        // where next_phys() looks for it
         let rest = (*block).payload().add(size) as *mut Header;
         let was_last = (*block).is_last();
 
@@ -317,7 +329,7 @@ impl<'a> Tlsf<'a> {
 
         rest.write(Header {
             size_and_flags: rest_size,
-            prev_phys: block,
+            prev_phys:      block,
         });
         (*rest).set_flag(FLAG_LAST, was_last);
 
@@ -328,7 +340,8 @@ impl<'a> Tlsf<'a> {
         self.insert_free(rest);
     }
 
-    /// Merges `block` with the free blocks on either side of it, and files the result.
+    /// Merges `block` with the free blocks on either side of it, and files the
+    /// result.
     unsafe fn coalesce_and_insert(&mut self, block: *mut Header) {
         let mut block = block;
 
@@ -363,22 +376,24 @@ impl<'a> Tlsf<'a> {
     }
 }
 
-impl Strategy for Tlsf<'_> {
+// SAFETY: every block handed out comes from `split_block`, which carves it from
+// a free block whose header records a size the block genuinely has, rounds the
+// payload address up to `layout.align()`, and unlinks the block from the free
+// lists before returning it. So a live block is aligned, is as large as it was
+// asked to be, and is reachable from no other allocation until `deallocate`
+// puts it back.
+unsafe impl Strategy for Tlsf<'_> {
     fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
         if layout.size() == 0 {
             return None;
         }
         let align = layout.align().max(ALIGN);
         let size = align_up(layout.size().max(MIN_PAYLOAD), ALIGN);
-        // An alignment wider than a block's own needs room to shift the payload up to it. The
-        // front that is shifted past becomes a block of its own, so when one boundary does not
-        // leave enough room for that the shift goes up a further `align`, and the search covers
-        // the wider case.
-        let search = if align > ALIGN {
-            size + align + size_of::<Header>()
-        } else {
-            size
-        };
+        // An alignment wider than a block's own needs room to shift the payload up to
+        // it. The front that is shifted past becomes a block of its own, so
+        // when one boundary does not leave enough room for that the shift goes
+        // up a further `align`, and the search covers the wider case.
+        let search = if align > ALIGN { size + align + size_of::<Header>() } else { size };
 
         let block = self.find_free(search);
         if block.is_null() {
@@ -391,9 +406,10 @@ impl Strategy for Tlsf<'_> {
             let payload = (*block).payload() as usize;
             let mut aligned = align_up(payload, align);
             if aligned != payload && aligned - payload < size_of::<Header>() + MIN_PAYLOAD {
-                // The front would be too narrow to be a block, and filing a block with no payload
-                // would write its free links over the header that follows it. The next boundary up
-                // always leaves room, and the search reserved for it.
+                // The front would be too narrow to be a block, and filing a block with no
+                // payload would write its free links over the header that
+                // follows it. The next boundary up always leaves room, and the
+                // search reserved for it.
                 aligned += align;
             }
             let mut block = block;
@@ -413,7 +429,7 @@ impl Strategy for Tlsf<'_> {
 
                 shifted.write(Header {
                     size_and_flags: rest,
-                    prev_phys: block,
+                    prev_phys:      block,
                 });
                 (*shifted).set_flag(FLAG_LAST, was_last);
 
@@ -426,7 +442,10 @@ impl Strategy for Tlsf<'_> {
             }
 
             self.split(block, size);
-            debug_assert!(!(*block).is_free(), "a handed out block is not on a free list");
+            debug_assert!(
+                !(*block).is_free(),
+                "a handed out block is not on a free list"
+            );
             debug_assert_eq!(
                 (*block).payload() as usize % align,
                 0,
@@ -449,16 +468,18 @@ impl Strategy for Tlsf<'_> {
 
 #[cfg(test)]
 mod invariants {
-    //! Structural checks over the block list, and a randomised sequence that runs them after
-    //! every operation.
+    //! Structural checks over the block list, and a randomised sequence that
+    //! runs them after every operation.
     //!
-    //! The suite that existed checked what the allocator returns. These check what it leaves
-    //! behind: the physical chain, the free lists, the bitmaps, and the free counter, none of
-    //! which are observable through the public surface and any of which going wrong is how an
+    //! The suite that existed checked what the allocator returns. These check
+    //! what it leaves behind: the physical chain, the free lists, the
+    //! bitmaps, and the free counter, none of which are observable through
+    //! the public surface and any of which going wrong is how an
     //! allocator corrupts memory long after the operation that broke it.
 
-    // The crate is `no_std` under its default features, so the test module reaches for the
-    // collections it needs explicitly rather than through a prelude that is not there.
+    // The crate is `no_std` under its default features, so the test module reaches
+    // for the collections it needs explicitly rather than through a prelude
+    // that is not there.
     extern crate std;
     use std::vec::Vec;
 
@@ -469,17 +490,18 @@ mod invariants {
     #[derive(Debug, Clone, Copy)]
     struct Seen {
         header: *mut Header,
-        size: usize,
-        free: bool,
-        last: bool,
+        size:   usize,
+        free:   bool,
+        last:   bool,
     }
 
-    /// Walks the physical chain from the first block and checks it holds together.
+    /// Walks the physical chain from the first block and checks it holds
+    /// together.
     ///
     /// # Safety
     ///
-    /// `base` is the region [`Tlsf::new`] was given, unmoved, and the allocator built from it
-    /// is still alive.
+    /// `base` is the region [`Tlsf::new`] was given, unmoved, and the allocator
+    /// built from it is still alive.
     unsafe fn walk(base: *mut u8) -> Vec<Seen> {
         let mut blocks = Vec::new();
         let mut header = align_up(base as usize, ALIGN) as *mut Header;
@@ -530,8 +552,8 @@ mod invariants {
     unsafe fn check(base: *mut u8, alloc: &Tlsf) {
         let blocks = walk(base);
 
-        // Coalescing: a free block never sits next to another free block, or the allocator
-        // would be holding two blocks where it could hand out one.
+        // Coalescing: a free block never sits next to another free block, or the
+        // allocator would be holding two blocks where it could hand out one.
         for pair in blocks.windows(2) {
             assert!(
                 !(pair[0].free && pair[1].free),
@@ -549,11 +571,11 @@ mod invariants {
             "free_bytes agrees with the blocks marked free"
         );
 
-        // Every block on a size-class list is free, is filed under the class its size maps to,
-        // and appears exactly once.
+        // Every block on a size-class list is free, is filed under the class its size
+        // maps to, and appears exactly once.
         let mut listed = Vec::new();
-        for fl in 0..FL_COUNT {
-            for sl in 0..SL_COUNT {
+        for fl in 0 .. FL_COUNT {
+            for sl in 0 .. SL_COUNT {
                 let mut node = alloc.heads[fl][sl];
                 let mut guard = 0;
                 while !node.is_null() {
@@ -601,11 +623,15 @@ mod invariants {
             "every free block is filed, and nothing else is"
         );
         for header in free_in_chain {
-            assert!(listed.contains(&header), "a free block was left off its list");
+            assert!(
+                listed.contains(&header),
+                "a free block was left off its list"
+            );
         }
     }
 
-    /// A deterministic sequence, so a failure is reproducible from the seed alone.
+    /// A deterministic sequence, so a failure is reproducible from the seed
+    /// alone.
     struct Rng(u64);
 
     impl Rng {
@@ -661,9 +687,10 @@ mod invariants {
         let mut rng = Rng(0x5EED_1234_ABCD_0001);
         let mut live: Vec<(NonNull<u8>, Layout, u8)> = Vec::new();
 
-        for step in 0..4_000 {
-            // Allocate more often than free while there is little outstanding, so the region
-            // fills and the interesting paths (splitting, exhaustion, coalescing) are reached.
+        for step in 0 .. 4_000 {
+            // Allocate more often than free while there is little outstanding, so the
+            // region fills and the interesting paths (splitting, exhaustion,
+            // coalescing) are reached.
             let allocating = live.is_empty() || rng.below(100) < 60;
 
             if allocating {
@@ -701,8 +728,9 @@ mod invariants {
             unsafe { check(base, &alloc) };
         }
 
-        // Everything still outstanding goes back, and the region ends as it began. A permanent
-        // loss here would mean a block went missing rather than merely being fragmented.
+        // Everything still outstanding goes back, and the region ends as it began. A
+        // permanent loss here would mean a block went missing rather than
+        // merely being fragmented.
         for (ptr, layout, _) in live {
             unsafe { alloc.deallocate(ptr, layout) };
             unsafe { check(base, &alloc) };

@@ -62,8 +62,8 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "notko"
-version = "0.0.0"
-source = "git+ssh://git@github.com/orgrinrt/notko.git?branch=dev#3992c8b38f4decc7293ad34e566e11595f61859a"
+version = "0.0.1"
+source = "git+https://github.com/orgrinrt/notko.git?branch=dev#9913082d38af38ca2268cfeb9fd6b8da71b52396"
 
 [[package]]
 name = "proc-macro-error"

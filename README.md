@@ -1,20 +1,16 @@
-# dollop
+# `dollop`
 
 <div align="center" style="text-align: center;">
 
 [![GitHub Stars](https://img.shields.io/github/stars/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/stargazers)
+[![Crates.io](https://img.shields.io/crates/v/dollop)](https://crates.io/crates/dollop)
+[![docs.rs](https://img.shields.io/docsrs/dollop)](https://docs.rs/dollop)
 [![GitHub Issues](https://img.shields.io/github/issues/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/issues)
-[![Latest Version](https://img.shields.io/badge/version-0.0.1-red.svg?label=latest)](https://github.com/orgrinrt/dollop)
-![GitHub last commit](https://img.shields.io/github/last-commit/orgrinrt/dollop?color=%23009689&link=https%3A%2F%2Fgithub.com%2Forgrinrt%2Fdollop)
+![License](https://img.shields.io/github/license/orgrinrt/dollop?color=%23009689)
 
-> An experimental allocator implementing several strategies with common api patterns for more convenient reuse.
+> An experimental allocator with several strategies behind one common api.
 
 </div>
-
-dollop is an early work in progress. One allocator has landed, `Tlsf`, behind the `Strategy`
-contract described below. It is not a `GlobalAlloc` and allocation is single-threaded. The
-workspace also contains `impligen`, a proc-macro crate for masquerading implicit generics for
-struct implementations, developed alongside the allocator.
 
 ## Features
 
@@ -114,4 +110,4 @@ Whether you use this project, have learned something from it, or just like it, p
 
 `SPDX-License-Identifier: MPL-2.0`
 
-> You can check out the full license [here](https://github.com/orgrinrt/dollop/blob/main/LICENSE)
+> You can check out the full license [here](https://github.com/orgrinrt/dollop/blob/dev/LICENSE)

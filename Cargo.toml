@@ -8,7 +8,6 @@ edition = "2018"
 # and cargo has no way to say a feature has a floor of its own; `tests/msrv.rs` checks the
 # default set under this and says so.
 rust-version = "1.64.0"
-authors = ["orgrinrt", "Hiisi Digital"]
 
 [workspace.dependencies]
 
@@ -17,12 +16,12 @@ name = "dollop"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-authors.workspace = true
 description = "An experimental allocator implementing several strategies with common api patterns for more convenient reuse"
 license = "MPL-2.0"
 readme = "README.md"
-keywords = []
-categories = []
+keywords = ["allocator", "arena", "memory", "no_std", "alloc"]
+exclude = [".idea/", "target/"]
+categories = ["memory-management", "no-std", "rust-patterns"]
 documentation = "https://docs.rs/dollop"
 homepage = "https://github.com/orgrinrt/dollop"
 repository = "https://github.com/orgrinrt/dollop"
@@ -31,7 +30,7 @@ repository = "https://github.com/orgrinrt/dollop"
 # Only under `no_alloc`, where it supplies the lending contract `Lease` satisfies. notko
 # is not on crates.io yet, so this is a git dependency, and a crate carrying `no_alloc`
 # cannot be published until it is.
-notko = { git = "https://github.com/orgrinrt/notko.git", branch = "dev", optional = true, default-features = false }
+notko = { git = "https://github.com/orgrinrt/notko.git", branch = "dev", version = "0.0.1", optional = true, default-features = false }
 
 [features]
 default = ["tlsf"]
@@ -48,8 +47,6 @@ no_std = []
 no_alloc = ["no_std", "dep:notko"]
 
 [profile.dev]
-panic = "abort"
-[profile.release]
 panic = "abort"
 
 # The lending example needs the feature the lending API is behind. Without this,

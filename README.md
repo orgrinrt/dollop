@@ -30,6 +30,22 @@ manifest by `tests/readme.rs`, because a feature table is a claim about the mani
 one had drifted: it documented a `std` feature the manifest does not have, and said `tlsf`
 gated nothing, which stopped being true.
 
+## Installation
+
+Not published yet, so this does not resolve. It is the command once a release
+lands.
+
+```bash
+cargo add dollop
+```
+
+Or in `Cargo.toml`:
+
+```toml
+[dependencies]
+dollop = "0.0.1"
+```
+
 ## Usage
 
 An allocator manages a region of memory it is handed, so the caller decides where that region

@@ -8,9 +8,16 @@
 [![GitHub Issues](https://img.shields.io/github/issues/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/issues)
 ![License](https://img.shields.io/github/license/orgrinrt/dollop?color=%23009689)
 
-> An experimental allocator with several strategies behind one common api.
+> An experimental allocator. One strategy so far, behind an api shaped for more.
 
 </div>
+
+## Status
+
+Experimental. One allocator has landed, `Tlsf`, and the api around it is shaped
+so a second can arrive without moving the first. It is not a `GlobalAlloc`, and
+allocation is single-threaded. Both of those are constraints you have to design
+around rather than details, so they are here rather than further down.
 
 ## Features
 

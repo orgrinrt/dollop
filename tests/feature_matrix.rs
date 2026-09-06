@@ -1,11 +1,10 @@
 //! Every feature selection this crate offers, built, and the declared minimum
 //! checked.
 //!
-//! `no_std` is in the default set here, which makes the selection without it
-//! the one that goes unbuilt: every mistake in a `std`-only path compiles for
-//! nobody and is noticed by nobody. And `tlsf` gates the only allocator, so the
-//! selection without it is a crate with a trait and no implementor, which still
-//! has to compile.
+//! Each allocator is a feature that gates its module, so the selection with
+//! none of them is a crate with a trait and no implementor, which still has to
+//! compile, and each one alone has to as well. `global` and `no_alloc` are the
+//! two that compose with any of them.
 
 use std::process::Command;
 
@@ -47,6 +46,13 @@ fn every_selection_builds() {
         "no_alloc",
         "tlsf,no_alloc",
         "tlsf,no_std,no_alloc",
+        "bump",
+        "bump,no_std",
+        "global",
+        "global,no_std",
+        "tlsf,global",
+        "bump,global,no_std",
+        "tlsf,bump,global,no_std,no_alloc",
     ] {
         let label = if features.is_empty() { "no features" } else { features };
         if features.is_empty() {
@@ -135,22 +141,31 @@ fn the_declared_minimum_toolchain_builds_the_default_selection() {
         format!(
             "[package]\nname = \"msrv_check\"\nversion = \"0.0.0\"\nedition = \"2018\"\n\
              rust-version = \"{}\"\n\n[dependencies]\n\n[features]\n\
-             default = [\"tlsf\", \"no_std\"]\ntlsf = []\nno_std = []\n\n[workspace]\n",
+             default = [\"tlsf\", \"bump\", \"no_std\"]\ntlsf = []\nbump = []\nglobal = []\n\
+             no_std = []\n\n[workspace]\n",
             MSRV,
         ),
     )
     .expect("the msrv manifest");
 
-    for module in ["lib.rs", "strategy.rs", "tlsf.rs"] {
-        let source = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("src")
-                .join(module),
-        )
-        .unwrap_or_else(|e| panic!("reading src/{}: {}", module, e));
-        std::fs::write(root.join("src").join(module), source)
-            .unwrap_or_else(|e| panic!("writing src/{}: {}", module, e));
+    // The whole source tree, since the default selection is more than three files
+    // now and the list here went stale the moment it was one more.
+    fn copy_tree(from: &std::path::Path, to: &std::path::Path) {
+        std::fs::create_dir_all(to).expect("the target directory");
+        for entry in std::fs::read_dir(from).expect("the source directory") {
+            let path = entry.expect("an entry").path();
+            let target = to.join(path.file_name().expect("a name"));
+            if path.is_dir() {
+                copy_tree(&path, &target);
+            } else {
+                std::fs::copy(&path, &target).expect("copying a source file");
+            }
+        }
     }
+    copy_tree(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        &root.join("src"),
+    );
 
     let output = Command::new("cargo")
         .args([format!("+{}", MSRV), "check".into()])

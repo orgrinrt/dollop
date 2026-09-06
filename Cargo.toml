@@ -33,10 +33,15 @@ repository = "https://github.com/orgrinrt/dollop"
 notko = { git = "https://github.com/orgrinrt/notko.git", branch = "dev", version = "0.0.1", optional = true, default-features = false }
 
 [features]
-default = ["tlsf"]
+default = ["tlsf", "bump"]
 # One feature per allocator. Each gates its module, so turning it off removes the code rather
 # than leaving a switch that forwards nothing.
 tlsf = []
+bump = []
+# `Global`, which puts a strategy behind a spin lock and a `GlobalAlloc` impl, so it can be
+# the program's `#[global_allocator]`. Off by default because most consumers of an arena
+# want it as a value, and the lock is a cost only the shared shape pays.
+global = []
 # Sets `#![no_std]`. There is no paired `std` feature because nothing here needs one: with this
 # off the crate simply compiles against std.
 no_std = []
@@ -54,6 +59,14 @@ panic = "abort"
 [[example]]
 name = "lending_from_an_allocator"
 required-features = ["no_alloc", "tlsf"]
+
+[[example]]
+name = "global_allocator"
+required-features = ["global", "tlsf"]
+
+[[example]]
+name = "phases"
+required-features = ["bump"]
 
 [lib]
 doctest = true

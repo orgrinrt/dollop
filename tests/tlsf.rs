@@ -272,3 +272,136 @@ fn a_long_mixed_sequence_keeps_every_block_intact() {
     }
     assert_eq!(alloc.free_bytes(), whole, "everything came back");
 }
+
+/// Resizing keeps the bytes and, where the neighbour allows, the address.
+#[test]
+fn shrinking_stays_in_place_and_gives_the_tail_back() {
+    let mut region = [0u8; 4096];
+    let mut alloc = Tlsf::new(&mut region).unwrap();
+    let whole = alloc.free_bytes();
+
+    let l = layout(512, 8);
+    let ptr = alloc.allocate(l).unwrap();
+    unsafe { stamp(ptr.as_ptr(), 512, 0x11) };
+    let taken = whole - alloc.free_bytes();
+
+    let same = unsafe { alloc.reallocate(ptr, l, 64) }.expect("shrinking fits");
+    assert_eq!(same, ptr, "a shrink never moves the block");
+    assert!(
+        unsafe { check_stamp(same.as_ptr(), 64, 0x11) },
+        "the kept bytes are intact"
+    );
+    assert!(
+        whole - alloc.free_bytes() < taken,
+        "the tail came back: {} taken before, {} after",
+        taken,
+        whole - alloc.free_bytes()
+    );
+
+    unsafe { alloc.deallocate(same, layout(64, 8)) };
+    assert_eq!(alloc.free_bytes(), whole, "and the region is whole again");
+}
+
+#[test]
+fn growing_into_a_free_neighbour_stays_in_place() {
+    let mut region = [0u8; 4096];
+    let mut alloc = Tlsf::new(&mut region).unwrap();
+    let whole = alloc.free_bytes();
+
+    // The only block, so everything after it is one free block.
+    let l = layout(64, 8);
+    let ptr = alloc.allocate(l).unwrap();
+    unsafe { stamp(ptr.as_ptr(), 64, 0x22) };
+
+    let grown = unsafe { alloc.reallocate(ptr, l, 1024) }.expect("the neighbour is free");
+    assert_eq!(grown, ptr, "the block stretched where it stood");
+    assert!(unsafe { check_stamp(grown.as_ptr(), 64, 0x22) });
+    // The whole new length is writable, which an in-place grow that lied about
+    // its size would break by overlapping the free block after it.
+    unsafe { stamp(grown.as_ptr(), 1024, 0x33) };
+    let second = alloc.allocate(l).expect("room for another");
+    assert!(
+        unsafe { check_stamp(grown.as_ptr(), 1024, 0x33) },
+        "the second block did not land inside"
+    );
+
+    unsafe {
+        alloc.deallocate(second, l);
+        alloc.deallocate(grown, layout(1024, 8));
+    }
+    assert_eq!(alloc.free_bytes(), whole);
+}
+
+#[test]
+fn growing_against_a_live_neighbour_moves_and_keeps_the_contents() {
+    let mut region = [0u8; 4096];
+    let mut alloc = Tlsf::new(&mut region).unwrap();
+    let whole = alloc.free_bytes();
+
+    let l = layout(64, 8);
+    let a = alloc.allocate(l).unwrap();
+    let b = alloc.allocate(l).unwrap();
+    unsafe { stamp(a.as_ptr(), 64, 0x44) };
+    unsafe { stamp(b.as_ptr(), 64, 0x55) };
+
+    // `b` sits right after `a`, so `a` cannot stretch and has to move.
+    let moved = unsafe { alloc.reallocate(a, l, 512) }.expect("room elsewhere");
+    assert_ne!(moved, a, "a live neighbour forces a move");
+    assert!(
+        unsafe { check_stamp(moved.as_ptr(), 64, 0x44) },
+        "the bytes came with it"
+    );
+    assert!(
+        unsafe { check_stamp(b.as_ptr(), 64, 0x55) },
+        "and the neighbour is untouched"
+    );
+
+    unsafe {
+        alloc.deallocate(moved, layout(512, 8));
+        alloc.deallocate(b, l);
+    }
+    assert_eq!(
+        alloc.free_bytes(),
+        whole,
+        "the old block was returned by the move"
+    );
+}
+
+#[test]
+fn a_resize_the_region_cannot_hold_is_refused_and_changes_nothing() {
+    let mut region = [0u8; 1024];
+    let mut alloc = Tlsf::new(&mut region).unwrap();
+
+    let l = layout(64, 8);
+    let ptr = alloc.allocate(l).unwrap();
+    unsafe { stamp(ptr.as_ptr(), 64, 0x66) };
+    let free = alloc.free_bytes();
+
+    assert!(unsafe { alloc.reallocate(ptr, l, 1 << 20) }.is_none());
+    assert!(
+        unsafe { alloc.reallocate(ptr, l, 0) }.is_none(),
+        "zero is refused like an allocation"
+    );
+    assert_eq!(alloc.free_bytes(), free, "nothing moved");
+    assert!(
+        unsafe { check_stamp(ptr.as_ptr(), 64, 0x66) },
+        "and the block is still the caller's"
+    );
+    unsafe { alloc.deallocate(ptr, l) };
+}
+
+#[test]
+fn a_resize_to_the_same_class_keeps_the_block_and_its_bytes() {
+    let mut region = [0u8; 1024];
+    let mut alloc = Tlsf::new(&mut region).unwrap();
+    let l = layout(60, 8);
+    let ptr = alloc.allocate(l).unwrap();
+    unsafe { stamp(ptr.as_ptr(), 60, 0x77) };
+    let free = alloc.free_bytes();
+    // 60 and 64 round to the same payload, so there is nothing to split off.
+    let same = unsafe { alloc.reallocate(ptr, l, 64) }.expect("fits");
+    assert_eq!(same, ptr);
+    assert_eq!(alloc.free_bytes(), free);
+    assert!(unsafe { check_stamp(same.as_ptr(), 60, 0x77) });
+    unsafe { alloc.deallocate(same, layout(64, 8)) };
+}

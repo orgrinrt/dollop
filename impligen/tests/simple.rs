@@ -19,7 +19,7 @@ trait SomeTraitWithGenerics<T> {
 struct Wrapper<T: Copy>(T);
 
 #[with_generics(
-    T: Copy + PartialEq, 
+    T: Copy + PartialEq,
     U: Copy,
     const MAGIC: usize = 42
 )]

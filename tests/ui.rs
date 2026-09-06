@@ -1,13 +1,14 @@
 //! Compile-fail tests.
 //!
-//! `Strategy` is an unsafe trait, which is a refusal rather than a value, so nothing in the
-//! ordinary suite can reach it: a test asserting that a safe impl does not compile cannot
-//! itself compile. trybuild builds each case as its own crate and asserts the diagnostic, so
-//! the refusal is pinned and a later loosening of the bound fails here instead of silently
-//! restoring the hole.
+//! `Strategy` is an unsafe trait, which is a refusal rather than a value, so
+//! nothing in the ordinary suite can reach it: a test asserting that a safe
+//! impl does not compile cannot itself compile. trybuild builds each case as
+//! its own crate and asserts the diagnostic, so the refusal is pinned and a
+//! later loosening of the bound fails here instead of silently restoring the
+//! hole.
 
-/// Every case in `tests/ui`, so a file added without a line here fails rather than going
-/// unrun. The counts are the whole point: an empty glob passes.
+/// Every case in `tests/ui`, so a file added without a line here fails rather
+/// than going unrun. The counts are the whole point: an empty glob passes.
 #[test]
 fn the_ui_cases_hold() {
     const EXPECTED_FAILING: usize = 1;

@@ -8,22 +8,25 @@
 [![GitHub Issues](https://img.shields.io/github/issues/orgrinrt/dollop.svg)](https://github.com/orgrinrt/dollop/issues)
 ![License](https://img.shields.io/github/license/orgrinrt/dollop?color=%23009689)
 
-> An experimental allocator. One strategy so far, behind an api shaped for more.
+> An experimental allocator. Two strategies behind one api, and a way to be the global one.
 
 </div>
 
 ## Status
 
-Experimental. One allocator has landed, `Tlsf`, and the api around it is shaped
-so a second can arrive without moving the first. It is not a `GlobalAlloc`, and
-allocation is single-threaded. Both of those are constraints you have to design
-around rather than details, so they are here rather than further down.
+Experimental. Two allocators have landed, `Tlsf` and `Bump`, behind the one
+`Strategy` contract, and `Global` puts either behind a lock and a `GlobalAlloc`
+impl so it can be a program's `#[global_allocator]`. A strategy on its own is a
+value and is used from one thread at a time, which is the shape most arenas
+want; the lock is a cost only the shared shape pays.
 
 ## Features
 
 | Feature | Default | What it does |
 |---|---|---|
 | `tlsf` | yes | The two-level segregated fit allocator. Gates the module, so turning it off removes the code rather than leaving a switch that forwards nothing. |
+| `bump` | yes | The bump allocator: an add and a compare per block, no headers, and only the most recent block comes back before the whole region does. |
+| `global` | no | `Global`, a strategy behind a spin lock and a `GlobalAlloc` impl, which is what a `#[global_allocator]` has to be. Off by default because most consumers want an arena as a value and the lock is a cost only the shared shape pays. |
 | `no_std` | no | Sets `#![no_std]`. There is no paired `std` feature, because nothing here needs one: with this off the crate compiles against std. It is off by default so that turning it on is the consumer's decision: cargo unifies features across a dependency graph, so a default `no_std` would put every consumer of every sibling crate into `no_std` without any of them asking. |
 | `no_alloc` | no | Adds `Lease`, which presents a block from any `Strategy` as storage satisfying notko's lending contract. Implies `no_std`. |
 
@@ -72,9 +75,12 @@ unsafe { alloc.deallocate(ptr, layout) };
 
 ### Strategies
 
-`Strategy` is the shared contract: `allocate`, `deallocate`, and `free_bytes`. Strategies differ
-in how they choose a free block and how they track the ones they are not using, so swapping one
-for another changes the type named and nothing else.
+`Strategy` is the shared contract: `allocate`, `deallocate`, `reallocate` and `free_bytes`.
+Strategies differ in how they choose a free block and how they track the ones they are not
+using, so swapping one for another changes the type named and nothing else. `reallocate`
+has a provided implementation that allocates, copies and returns, which is correct for any
+strategy, and both strategies here override it to resize where the block stands when they
+can.
 
 `Tlsf` is the first. Free blocks are filed by size into classes, indexed by a pair: the first
 level is the power of two the size falls in, the second splits that range into four. A bitmap per
@@ -83,25 +89,59 @@ off the classes that are too small and taking the lowest bit still set, rather t
 list. Blocks carry a header pointing at the block physically before them, so a block being freed
 merges with the free neighbours on either side.
 
-It is not a `GlobalAlloc` yet: that needs the allocator to be shared, which is a synchronisation
-question this does not answer. Allocation is single-threaded for now.
+`Bump` is the other end of the trade. A region and a mark: a block is the next `size` bytes
+past the mark, aligned up, and the mark moves past it. Nothing is written per block, so
+allocation is an add and a compare. What it gives up is release: a block in the middle of
+the region cannot be taken back, because nothing remembers where it was, so only the most
+recent block comes back and `reset` takes back everything at once. That is the right trade
+for memory used in phases and thrown away together, a frame, a request, a parse.
+
+### The global allocator
+
+A strategy is written against `&mut self`, and a `GlobalAlloc` is reached through a shared
+reference from every thread at once, so `Global` sits between them: a spin lock around a
+strategy, built on first use because a `static` has to be constructed in a `const` context
+and a region cannot be borrowed in one.
+
+```rust
+use dollop::{Global, Tlsf};
+
+static mut REGION: [u8; 1 << 16] = [0; 1 << 16];
+
+// #[global_allocator], in a program that wants this underneath everything
+static HEAP: Global<Tlsf<'static>> = Global::new(|| {
+    // SAFETY: runs once, under the allocator's own lock, and nothing else names REGION
+    Tlsf::new(unsafe { &mut *core::ptr::addr_of_mut!(REGION) }).expect("64 KiB holds a heap")
+});
+
+# #[cfg(feature = "global")]
+assert!(HEAP.free_bytes() > 0);
+```
+
+The lock spins rather than parks, because parking needs an operating system and this is the
+allocator underneath whatever the program has. The critical section is one allocation.
 
 ## Examples
 
 ```text
 cargo run --example one_region
+cargo run --example phases
+cargo run --example global_allocator --features global
 cargo run --example lending_from_an_allocator --features no_alloc
 ```
 
 The first takes three blocks of different sizes and alignments out of a 4 KiB array on the
-stack and gives them all back, printing the free count at each step. The second is a whole
-program with one region and nothing underneath it: a fixed-budget event buffer that batches
-readings into a block taken from the allocator, summarises them, and returns it, with notko's
-`Fill` doing the filling and knowing nothing about where the storage came from.
+stack and gives them all back, printing the free count at each step. The second runs three
+frames of a small simulation out of a bump arena, resetting it between frames. The third
+puts `Tlsf` underneath a whole program as its `#[global_allocator]`, so every `Vec` and
+`String` in it comes out of a static array. The last is a whole program with one region and
+nothing underneath it: a fixed-budget event buffer that batches readings into a block taken
+from the allocator, summarises them, and returns it, with notko's `Fill` doing the filling
+and knowing nothing about where the storage came from.
 
-Both are run by `cargo test`, in `tests/examples_run.rs`, which reads the free counts back
-and checks they match. An example that leaked one block per round would print a plausible
-falling number and look fine.
+All four are run by `cargo test`, in `tests/examples_run.rs`, which reads the free counts
+back and checks they match. An example that leaked one block per round would print a
+plausible falling number and look fine.
 
 ## Compatibility
 

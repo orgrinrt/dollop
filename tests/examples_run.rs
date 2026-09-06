@@ -12,14 +12,21 @@ use std::process::Command;
 fn run_example(name: &str, features: &[&str]) -> String {
     let mut command = Command::new(env!("CARGO"));
     command
-        .args(&["run", "-q", "--example", name])
+        .args(["run", "-q", "--example", name])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .env(
             "CARGO_TARGET_DIR",
             concat!(env!("CARGO_MANIFEST_DIR"), "/target/examples"),
-        );
+        )
+        // A panic in the global-allocator example prints its backtrace through
+        // the example's own heap, and parsing debug info for that needs more
+        // than the megabyte it has. The allocation error then tries to print a
+        // backtrace of its own and waits on the lock the first one holds, so a
+        // failing example hangs rather than failing. Without backtraces it
+        // fails, which is what a test wants.
+        .env("RUST_BACKTRACE", "0");
     if !features.is_empty() {
-        command.args(&["--features", &features.join(",")]);
+        command.args(["--features", &features.join(",")]);
     }
 
     let output = command
@@ -51,8 +58,8 @@ fn one_region_takes_blocks_and_gives_them_all_back() {
 
     let free_at_end = out
         .lines()
-        .filter_map(|line| line.strip_prefix("returned "))
-        .last()
+        .rev()
+        .find_map(|line| line.strip_prefix("returned "))
         .and_then(|line| line.split(", ").nth(1))
         .and_then(|rest| rest.split(' ').next())
         .expect("the last return line");
@@ -107,5 +114,63 @@ fn the_lending_example_returns_the_region_whole() {
         out.contains(&format!("refused, and {} bytes are still free", free)),
         "a refused lease changed the free count:\n{}",
         out,
+    );
+}
+
+#[test]
+fn the_phases_example_ends_with_the_whole_arena_free() {
+    let out = run_example("phases", &[]);
+
+    let size = out
+        .lines()
+        .find_map(|line| line.strip_suffix(" byte arena"))
+        .and_then(|rest| rest.strip_prefix("a "))
+        .expect("the opening line");
+    assert!(
+        out.contains(&format!("{size} bytes free, the whole arena")),
+        "the last reset did not give the whole arena back:\n{}",
+        out
+    );
+
+    // Three frames, each using the same amount, since each starts from a reset
+    // mark rather than from wherever the last one stopped.
+    let used: Vec<&str> = out
+        .lines()
+        .filter(|line| line.starts_with("frame "))
+        .filter_map(|line| line.split(": ").nth(1))
+        .filter_map(|rest| rest.split(' ').next())
+        .collect();
+    assert_eq!(used.len(), 3, "{}", out);
+    assert!(
+        used.iter().all(|u| u == &used[0]),
+        "frames used different amounts:\n{}",
+        out
+    );
+}
+
+#[test]
+fn the_global_allocator_example_returns_the_region_whole() {
+    let out = run_example("global_allocator", &["global"]);
+
+    assert!(out.contains("1000 strings joined"), "{}", out);
+    // The vector grew where it stood, which is `reallocate` doing its in-place
+    // path and not the copying fallback.
+    assert!(
+        out.contains("where it stood"),
+        "the vector moved rather than growing:\n{}",
+        out
+    );
+
+    let free_at_start = out
+        .lines()
+        .find_map(|line| line.strip_prefix("and "))
+        .and_then(|rest| rest.strip_suffix(" bytes free after"))
+        .expect("the baseline line");
+    assert!(
+        out.contains(&format!(
+            "{free_at_start} bytes free, the same as at the start"
+        )),
+        "a block was not returned:\n{}",
+        out
     );
 }
